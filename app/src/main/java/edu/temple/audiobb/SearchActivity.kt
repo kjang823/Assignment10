@@ -11,8 +11,8 @@ import com.android.volley.toolbox.Volley
 import org.json.JSONArray
 
 lateinit var jsonArray:JSONArray
-class SearchActivity : AppCompatActivity() {
 
+class SearchActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)

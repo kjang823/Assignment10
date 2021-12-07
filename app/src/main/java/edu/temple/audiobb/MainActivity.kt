@@ -139,26 +139,6 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
 
     }
 
-    private val isSingleContainer : Boolean by lazy{
-        findViewById<View>(R.id.container2) == null
-    }
-
-    private val selectedBookViewModel : SelectedBookViewModel by lazy {
-        ViewModelProvider(this).get(SelectedBookViewModel::class.java)
-    }
-
-    private val playingBookViewModel : PlayingBookViewModel by lazy {
-        ViewModelProvider(this).get(PlayingBookViewModel::class.java)
-    }
-
-    private val bookListViewModel : BookList by lazy {
-        ViewModelProvider(this).get(BookList::class.java)
-    }
-
-    companion object {
-        const val BOOKLISTFRAGMENT_KEY = "BookListFragment"
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -188,21 +168,19 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
                         as ControlFragment).setNowPlaying(it.title)
             }})
 
-        // Create intent for binding and starting service
+
         serviceIntent = Intent(this, PlayerService::class.java)
 
-        // bind to service
+
         bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)
 
 
-        // If we're switching from one container to two containers
-        // clear BookDetailsFragment from container1
         if (supportFragmentManager.findFragmentById(R.id.container1) is BookDetailsFragment
             && selectedBookViewModel.getSelectedBook().value != null) {
             supportFragmentManager.popBackStack()
         }
 
-        // If this is the first time the activity is loading, go ahead and add a BookListFragment
+
         if (savedInstanceState == null) {
             bookListFragment = BookListFragment()
             supportFragmentManager.beginTransaction()
@@ -210,8 +188,7 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
                 .commit()
         } else {
             bookListFragment = supportFragmentManager.findFragmentByTag(BOOKLISTFRAGMENT_KEY) as BookListFragment
-            // If activity loaded previously, there's already a BookListFragment
-            // If we have a single container and a selected book, place it on top
+
             if (isSingleContainer && selectedBookViewModel.getSelectedBook().value != null) {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.container1, BookDetailsFragment())
@@ -221,7 +198,7 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
             }
         }
 
-        // If we have two containers but no BookDetailsFragment, add one to container2
+
         if (!isSingleContainer && supportFragmentManager.findFragmentById(R.id.container2) !is BookDetailsFragment)
             supportFragmentManager.beginTransaction()
                 .add(R.id.container2, BookDetailsFragment())
@@ -235,47 +212,17 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
 
     }
 
-    override fun onBackPressed() {
-        // Backpress clears the selected book
-        selectedBookViewModel.setSelectedBook(null)
-
-//        with(preferences.edit()){
-//            putInt("bookID", 0)
-//            putInt("bookProgress", 0)
-//            commit()
-//        }
-
-
-        super.onBackPressed()
-    }
-
-    override fun bookSelected() {
-        // Perform a fragment replacement if we only have a single container
-        // when a book is selected
-        if (isSingleContainer && selectedBookViewModel.getSelectedBook().value != null) {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.container1, BookDetailsFragment())
-                .setReorderingAllowed(true)
-                .addToBackStack(null)
-                .commit()
-        }
-    }
-
     override fun play() {
 
-        var downloadRunnable = DownloadRunnable();
-        var thd =  Thread(downloadRunnable);
+        var download = DownloadRunnable()
+        var thd =  Thread(download)
+        thd.start()
+        thd.join()
+
+        thd =  Thread(download)
         thd.start()
 
 
-        thd.join(); // wait for run to end
-
-        // restart the runnable
-        thd =  Thread(downloadRunnable);
-        thd.start();
-
-        //check if there is a book selected and a service bound, set the selected book to playing book
-        //start the service
         if (connected && selectedBookViewModel.getSelectedBook().value != null) {
             Log.d("Button pressed", "Play button")
             Log.d("HowPlayed", "Streaming Book")
@@ -288,14 +235,51 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
                 downloadArray.append(selectedBookViewModel.getSelectedBook().value!!.id, bookProg)
             }
         }
-
-        Thread.sleep(3000)
+        Thread.sleep(1000)
         checkCurrentProgress(currentProgress)
 
     }
 
-    //helper function to return the seekbar to previous state before the
-    //app was killed
+    override fun bookSelected() {
+        if (isSingleContainer && selectedBookViewModel.getSelectedBook().value != null) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.container1, BookDetailsFragment())
+                .setReorderingAllowed(true)
+                .addToBackStack(null)
+                .commit()
+        }
+    }
+
+
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        selectedBookViewModel.setSelectedBook(null)
+    }
+
+    private val isSingleContainer : Boolean by lazy{
+        findViewById<View>(R.id.container2) == null
+    }
+
+    private val selectedBookViewModel : SelectedBookViewModel by lazy {
+        ViewModelProvider(this).get(SelectedBookViewModel::class.java)
+    }
+
+    private val playingBookViewModel : PlayingBookViewModel by lazy {
+        ViewModelProvider(this).get(PlayingBookViewModel::class.java)
+    }
+
+    private val bookListViewModel : BookList by lazy {
+        ViewModelProvider(this).get(BookList::class.java)
+    }
+
+    companion object {
+        const val BOOKLISTFRAGMENT_KEY = "BookListFragment"
+    }
+
+
+
+
     fun checkCurrentProgress(_currentProgress:Int){
         mediaControlBinder.seekTo(_currentProgress)
 
@@ -304,7 +288,7 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
     override fun pause() {
         if (connected)
             currentProgress = bookProgress.progress
-        //save the current progress of the playing book
+
         with(preferences.edit()) {
             putInt("bookProgress", bookProgress.progress)
                 .apply()
@@ -313,21 +297,23 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
         mediaControlBinder.pause()
     }
 
+    override fun seek(position: Int) {
+        if (connected && mediaControlBinder.isPlaying) mediaControlBinder.seekTo((playingBookViewModel.getPlayingBook().value!!.duration * (position.toFloat() / 100)).toInt())
+
+    }
+
     override fun stop() {
         if (connected) {
-            //set the shared preferences to 0
-            //so we skip the loading stage upon restart if app is killed
+
             with(preferences.edit()) {
                 putInt("bookID", 0)
                 putInt("bookProgress", 0)
                     .apply()
             }
-            //remove the title of currently playing book
+
             ControlFragment.setNowPlaying("")
-            //set the current progress of the book to 0
             currentProgress = 0
 
-            //move the seekbar back to position of 0
             supportFragmentManager.findFragmentById(R.id.controlFragmentContainerView)?.run{
                 with (this as ControlFragment) {
                     playingBookViewModel.getPlayingBook().value?.also {
@@ -342,11 +328,7 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
         }
     }
 
-    override fun seek(position: Int) {
-        // Converting percentage to proper book progress
-        if (connected && mediaControlBinder.isPlaying) mediaControlBinder.seekTo((playingBookViewModel.getPlayingBook().value!!.duration * (position.toFloat() / 100)).toInt())
 
-    }
 
     override fun onDestroy() {
 
