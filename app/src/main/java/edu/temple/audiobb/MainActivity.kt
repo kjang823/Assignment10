@@ -34,8 +34,8 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
     private lateinit var downloadArray : SparseArray<Int>
     private lateinit var preferences:SharedPreferences
     private lateinit var file:File
-    private val internalPrefFileName = "my_shared_preferences"
-    lateinit var bookProgress:PlayerService.BookProgress
+    private val sharedPrefName = "my_shared_preferences"
+    lateinit var progress:PlayerService.BookProgress
     private var jsonArray: JSONArray = JSONArray()
     var currentProgress = 0
     var bookProg = 0
@@ -46,12 +46,12 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
     val audiobookHandler = Handler(Looper.getMainLooper()) { msg ->
 
         msg.obj?.let { msgObj ->
-            bookProgress = msgObj as PlayerService.BookProgress
-            bookProg = bookProgress.progress
+            progress = msgObj as PlayerService.BookProgress
+            bookProg = progress.progress
 
             if (playingBookViewModel.getPlayingBook().value == null) {
                 Volley.newRequestQueue(this)
-                    .add(JsonObjectRequest(Request.Method.GET, API.getBookDataUrl(bookProgress.bookId), null, { jsonObject ->
+                    .add(JsonObjectRequest(Request.Method.GET, API.getBookDataUrl(progress.bookId), null, { jsonObject ->
                         playingBookViewModel.setPlayingBook(Book(jsonObject))
 
                         if (selectedBookViewModel.getSelectedBook().value == null) {
@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
             supportFragmentManager.findFragmentById(R.id.controlFragmentContainerView)?.run{
                 with (this as ControlFragment) {
                     playingBookViewModel.getPlayingBook().value?.also {
-                        setPlayProgress(((bookProgress.progress / it.duration.toFloat()) * 100).toInt())
+                        setPlayProgress(((progress.progress / it.duration.toFloat()) * 100).toInt())
                     }
                 }
             }
@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
         downloadArray = SparseArray()
 
         preferences = getPreferences(MODE_PRIVATE)
-        file = File(filesDir, internalPrefFileName)
+        file = File(filesDir, sharedPrefName)
 
 
         var reciever = object : BroadcastReceiver() {
@@ -207,9 +207,6 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
         findViewById<ImageButton>(R.id.searchButton).setOnClickListener {
             searchRequest.launch(Intent(this, SearchActivity::class.java))
         }
-
-
-
     }
 
     override fun play() {
@@ -240,6 +237,34 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
 
     }
 
+    override fun stop() {
+        if (connected) {
+
+            with(preferences.edit()) {
+                putInt("bookID", 0)
+                putInt("bookProgress", 0)
+                    .apply()
+            }
+            ControlFragment.setNowPlaying("")
+            currentProgress = 0
+
+            supportFragmentManager.findFragmentById(R.id.controlFragmentContainerView)?.run{
+                with (this as ControlFragment) {
+                    playingBookViewModel.getPlayingBook().value?.also {
+                        setPlayProgress(((0).toInt()))
+                    }
+                }
+            }
+            mediaControlBinder.stop()
+            stopService(serviceIntent)
+        }
+    }
+
+    override fun seek(position: Int) {
+        if (connected && mediaControlBinder.isPlaying) mediaControlBinder.seekTo((playingBookViewModel.getPlayingBook().value!!.duration * (position.toFloat() / 100)).toInt())
+
+    }
+
     override fun bookSelected() {
         if (isSingleContainer && selectedBookViewModel.getSelectedBook().value != null) {
             supportFragmentManager.beginTransaction()
@@ -250,7 +275,72 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
         }
     }
 
+    override fun pause() {
+        if (connected)
+            currentProgress = progress.progress
 
+        with(preferences.edit()) {
+            putInt("bookProgress", progress.progress)
+                .apply()
+
+        }
+        mediaControlBinder.pause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if(isFinishing && mediaControlBinder.isPlaying) {
+
+            mediaControlBinder.stop()
+
+            with(preferences.edit()) {
+
+                putInt("bookID", progress.bookId)
+                putInt("bookProgress", progress.progress)
+                commit()
+            }
+        }
+        unbindService(serviceConnection)
+
+    }
+    inner class DownloadRunnable: Runnable{
+        override fun run() {
+
+            var uri = ("https://kamorris.com/lab/audlib/download.php?id=${selectedBookViewModel.getSelectedBook().value!!.id}")
+
+            var totalSize = 0
+            var downloadedSize = 0
+
+            val url = URL(uri)
+            val urlConnection = url
+                .openConnection() as HttpURLConnection
+
+            urlConnection.requestMethod = "POST"
+            urlConnection.doOutput = true
+            urlConnection.connect()
+
+            val myDir: File
+            myDir = File(filesDir, "${selectedBookViewModel.getSelectedBook().value!!.id}")
+            myDir.mkdirs()
+
+            val mFileName: String = "${selectedBookViewModel.getSelectedBook().value!!.id}"
+            val file = File(myDir, mFileName)
+            val fileOutput = FileOutputStream(file)
+            val inputStream = urlConnection.inputStream
+            totalSize = urlConnection.contentLength
+
+            val buffer = ByteArray(2048)
+            var bufferLength = 0
+
+            while (inputStream.read(buffer).also { bufferLength = it } > 0) {
+                fileOutput.write(buffer, 0, bufferLength)
+                downloadedSize += bufferLength
+            }
+            fileOutput.close()
+        }
+
+
+    }
 
     override fun onBackPressed() {
         super.onBackPressed()
@@ -277,142 +367,8 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
         const val BOOKLISTFRAGMENT_KEY = "BookListFragment"
     }
 
-
-
-
     fun checkCurrentProgress(_currentProgress:Int){
         mediaControlBinder.seekTo(_currentProgress)
 
     }
-
-    override fun pause() {
-        if (connected)
-            currentProgress = bookProgress.progress
-
-        with(preferences.edit()) {
-            putInt("bookProgress", bookProgress.progress)
-                .apply()
-
-        }
-        mediaControlBinder.pause()
-    }
-
-    override fun seek(position: Int) {
-        if (connected && mediaControlBinder.isPlaying) mediaControlBinder.seekTo((playingBookViewModel.getPlayingBook().value!!.duration * (position.toFloat() / 100)).toInt())
-
-    }
-
-    override fun stop() {
-        if (connected) {
-
-            with(preferences.edit()) {
-                putInt("bookID", 0)
-                putInt("bookProgress", 0)
-                    .apply()
-            }
-
-            ControlFragment.setNowPlaying("")
-            currentProgress = 0
-
-            supportFragmentManager.findFragmentById(R.id.controlFragmentContainerView)?.run{
-                with (this as ControlFragment) {
-                    playingBookViewModel.getPlayingBook().value?.also {
-                        setPlayProgress(((0).toInt()))
-                    }
-                }
-            }
-
-
-            mediaControlBinder.stop()
-            stopService(serviceIntent)
-        }
-    }
-
-
-
-    override fun onDestroy() {
-
-        Log.d("sharedPref", "App Finishing?: " + isFinishing )
-        Log.d("sharedPref", "Media playing?: " + mediaControlBinder.isPlaying)
-
-        //check if orientation has changed or the app is being killed
-        //if the app is being killed then check if a book is playing
-        if(isFinishing && mediaControlBinder.isPlaying) {
-            //if a book is playing, stop the audio
-            mediaControlBinder.stop()
-            //take the book id and current progress and save it to be used when the app is
-            //restarted
-            with(preferences.edit()) {
-
-                putInt("bookID", bookProgress.bookId)
-                putInt("bookProgress", bookProgress.progress)
-                commit()
-                // Log.d("sharedPref", "Closing book id is: " + bookProgress.bookId.toString())
-                //Log.d("sharedPref", "Closing book progress is: " + bookProgress.progress.toString())
-
-            }
-
-        }
-        //call super function
-        super.onDestroy()
-        //unbind the service
-        unbindService(serviceConnection)
-
-    }
-
-    inner class DownloadRunnable: Runnable{
-        override fun run() {
-
-            var uri = ("https://kamorris.com/lab/audlib/download.php?id=${selectedBookViewModel.getSelectedBook().value!!.id}")
-
-            var totalSize = 0
-            var downloadedSize = 0
-
-            val url = URL(uri)
-            val urlConnection = url
-                .openConnection() as HttpURLConnection
-
-            urlConnection.requestMethod = "POST"
-            urlConnection.doOutput = true
-
-            // connect
-            urlConnection.connect()
-            //Toast.makeText(this, "Download Starting", Toast.LENGTH_LONG).show()
-
-            val myDir: File
-            myDir = File(filesDir, "${selectedBookViewModel.getSelectedBook().value!!.id}")
-            myDir.mkdirs()
-
-            // create a new file, to save the downloaded file
-            val mFileName: String = "${selectedBookViewModel.getSelectedBook().value!!.id}"
-            val file = File(myDir, mFileName)
-
-            val fileOutput = FileOutputStream(file)
-
-            // Stream used for reading the data from the internet
-            val inputStream = urlConnection.inputStream
-
-            // this is the total size of the file which we are downloading
-            totalSize = urlConnection.contentLength
-
-            // create a buffer...
-            val buffer = ByteArray(1024)
-            var bufferLength = 0
-
-            while (inputStream.read(buffer).also { bufferLength = it } > 0) {
-                fileOutput.write(buffer, 0, bufferLength)
-                downloadedSize += bufferLength
-                // update the progressbar //
-
-            }
-            // close the output stream when complete //
-            fileOutput.close()
-            //Toast.makeText(this, "Download Complete", Toast.LENGTH_LONG).show()
-        }
-
-
-    }
-
-
-
 }
