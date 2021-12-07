@@ -290,7 +290,6 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
     override fun onDestroy() {
         super.onDestroy()
         if(isFinishing && mediaControlBinder.isPlaying) {
-
             mediaControlBinder.stop()
 
             with(preferences.edit()) {
@@ -338,7 +337,6 @@ class MainActivity : AppCompatActivity(), BookListFragment.BookSelectedInterface
             }
             fileOutput.close()
         }
-
 
     }
 
