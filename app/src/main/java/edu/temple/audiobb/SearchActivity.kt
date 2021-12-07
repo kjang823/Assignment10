@@ -8,8 +8,11 @@ import android.widget.ImageButton
 import com.android.volley.Request
 import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.Volley
+import org.json.JSONArray
 
+lateinit var jsonArray:JSONArray
 class SearchActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)
@@ -21,8 +24,13 @@ class SearchActivity : AppCompatActivity() {
 
             Volley.newRequestQueue(this).add(
                 JsonArrayRequest(Request.Method.GET, url, null, {
+                    jsonArray = it
                     setResult(RESULT_OK,
-                        Intent().putExtra(BookList.BOOKLIST_KEY, BookList().apply{populateBooks(it)})
+                        Intent().putExtra(BookList.BOOKLIST_KEY, BookList().apply{
+                            populateBooks(it)
+
+
+                        })
                     )
                     finish()
                 }, {})
@@ -30,5 +38,12 @@ class SearchActivity : AppCompatActivity() {
 
 
         }
+    }
+
+    companion object{
+        fun getJSONArray():JSONArray{
+            return jsonArray
+        }
+
     }
 }

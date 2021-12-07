@@ -7,20 +7,20 @@
     tools:context=".ControlFragment">
 
     <ImageButton
-        android:id="@+id/playButton"
+        android:id="@+id/_play"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="8dp"
         android:src="@android:drawable/ic_media_play"
-        app:layout_constraintEnd_toStartOf="@+id/pauseButton"
+        app:layout_constraintEnd_toStartOf="@+id/_pause"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/stopButton"
-        app:layout_constraintTop_toBottomOf="@+id/nowPlayingTextView" />
+        app:layout_constraintStart_toEndOf="@+id/_stop"
+        app:layout_constraintTop_toBottomOf="@+id/_nowPlaying" />
 
     <SeekBar
-        android:id="@+id/seekBar"
+        android:id="@+id/_seekBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -29,28 +29,28 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/playButton" />
+        app:layout_constraintTop_toBottomOf="@+id/_play" />
 
     <ImageButton
-        android:id="@+id/stopButton"
+        android:id="@+id/_stop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/playButton" />
+        app:layout_constraintTop_toTopOf="@+id/_play" />
 
     <ImageButton
-        android:id="@+id/pauseButton"
+        android:id="@+id/_pause"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
         android:src="@android:drawable/ic_media_pause"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/playButton" />
+        app:layout_constraintTop_toTopOf="@+id/_play" />
 
     <TextView
-        android:id="@+id/nowPlayingTextView"
+        android:id="@+id/_nowPlaying"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="20sp"

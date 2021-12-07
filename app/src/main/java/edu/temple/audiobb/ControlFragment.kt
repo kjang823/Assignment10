@@ -9,12 +9,12 @@ import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
 
-var nowPlayingTextView: TextView? = null
+var nowPlaying: TextView? = null
 class ControlFragment : Fragment() {
 
-    lateinit var playButton: ImageButton
-    lateinit var pauseButton: ImageButton
-    lateinit var stopButton: ImageButton
+    lateinit var play: ImageButton
+    lateinit var pause: ImageButton
+    lateinit var stop: ImageButton
     var seekBar: SeekBar? = null
 
 
@@ -25,11 +25,11 @@ class ControlFragment : Fragment() {
         // Inflate the layout for this fragment
         val layout = inflater.inflate(R.layout.fragment_control, container, false)
 
-        playButton = layout.findViewById(R.id.playButton)
-        pauseButton = layout.findViewById(R.id.pauseButton)
-        stopButton = layout.findViewById(R.id.stopButton)
-        seekBar = layout.findViewById(R.id.seekBar)
-        nowPlayingTextView = layout.findViewById(R.id.nowPlayingTextView)
+        play = layout.findViewById(R.id._play)
+        pause = layout.findViewById(R.id._pause)
+        stop = layout.findViewById(R.id._stop)
+        seekBar = layout.findViewById(R.id._seekBar)
+        nowPlaying = layout.findViewById(R.id._nowPlaying)
 
         seekBar?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -49,21 +49,21 @@ class ControlFragment : Fragment() {
         val onClickListener = View.OnClickListener {
             var parent = activity as MediaControlInterface
             when (it.id) {
-                R.id.playButton -> parent.play()
-                R.id.pauseButton -> parent.pause()
-                R.id.stopButton -> parent.stop()
+                R.id._play -> parent.play()
+                R.id._pause -> parent.pause()
+                R.id._stop -> parent.stop()
             }
         }
 
-        playButton.setOnClickListener(onClickListener)
-        pauseButton.setOnClickListener(onClickListener)
-        stopButton.setOnClickListener(onClickListener)
+        play.setOnClickListener(onClickListener)
+        pause.setOnClickListener(onClickListener)
+        stop.setOnClickListener(onClickListener)
 
         return layout
     }
 
     fun setNowPlaying(title: String) {
-        nowPlayingTextView?.text = title
+        nowPlaying?.text = title
     }
 
     fun setPlayProgress(progress: Int) {
@@ -80,7 +80,7 @@ class ControlFragment : Fragment() {
     companion object {
 
         fun setNowPlaying(title: String) {
-            nowPlayingTextView?.text = title
+            nowPlaying?.text = title
         }
     }
 }
